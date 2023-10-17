@@ -131,7 +131,7 @@ void AclFamily::EvictOpenConnectionsOnAllProactorsWithRegistry(
     DCHECK(conn);
     auto connection = static_cast<facade::Connection*>(conn);
     auto ctx = static_cast<ConnectionContext*>(connection->cntx());
-    if (ctx && registry.contains(ctx->authed_username)) {
+    if (ctx && ctx->authed_username != "default" && registry.contains(ctx->authed_username)) {
       connection->ShutdownSelf();
     }
   };
