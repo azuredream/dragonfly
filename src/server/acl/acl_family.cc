@@ -265,9 +265,10 @@ std::optional<facade::ErrorReply> AclFamily::LoadToRegistryFromFile(std::string_
 
   auto registry_with_wlock = registry_->GetRegistryWithWriteLock();
   auto& registry = registry_with_wlock.registry;
-  // Evict open connections for old users
-  EvictOpenConnectionsOnAllProactorsWithRegistry(registry);
+  // TODO(see what redis is doing here)
   if (!init) {
+    // Evict open connections for old users
+    EvictOpenConnectionsOnAllProactorsWithRegistry(registry);
     registry.clear();
   }
   std::vector<uint32_t> categories;
