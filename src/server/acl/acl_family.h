@@ -15,7 +15,6 @@
 #include "server/acl/user_registry.h"
 #include "server/command_registry.h"
 #include "server/common.h"
-#include "user.h"
 
 namespace dfly {
 
