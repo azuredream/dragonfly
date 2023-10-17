@@ -15,6 +15,7 @@
 #include "server/acl/user_registry.h"
 #include "server/command_registry.h"
 #include "server/common.h"
+#include "user.h"
 
 namespace dfly {
 
@@ -53,6 +54,9 @@ class AclFamily final {
 
   // Helper function that closes all open connection from the deleted user
   void EvictOpenConnectionsOnAllProactors(std::string_view user);
+
+  // Helper function that closes all open connections for users in the registry
+  void EvictOpenConnectionsOnAllProactorsWithRegistry(const UserRegistry::RegistryType& registry);
 
   // Helper function that loads the acl state of an acl file into the user registry
   std::optional<facade::ErrorReply> LoadToRegistryFromFile(std::string_view full_path, bool init);

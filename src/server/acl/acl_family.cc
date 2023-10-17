@@ -125,6 +125,22 @@ void AclFamily::EvictOpenConnectionsOnAllProactors(std::string_view user) {
   }
 }
 
+void AclFamily::EvictOpenConnectionsOnAllProactorsWithRegistry(
+    const UserRegistry::RegistryType& registry) {
+  auto close_cb = [&registry]([[maybe_unused]] size_t id, util::Connection* conn) {
+    DCHECK(conn);
+    auto connection = static_cast<facade::Connection*>(conn);
+    auto ctx = static_cast<ConnectionContext*>(connection->cntx());
+    if (ctx && registry.contains(ctx->authed_username)) {
+      connection->ShutdownSelf();
+    }
+  };
+
+  if (main_listener_) {
+    main_listener_->TraverseConnections(close_cb);
+  }
+}
+
 void AclFamily::DelUser(CmdArgList args, ConnectionContext* cntx) {
   std::string_view username = facade::ToSV(args[0]);
   if (username == "default") {
@@ -247,24 +263,12 @@ std::optional<facade::ErrorReply> AclFamily::LoadToRegistryFromFile(std::string_
     requests.push_back(std::move(std::get<User::UpdateRequest>(req)));
   }
 
-  absl::flat_hash_set<std::string_view> usernames_set;
-  for (const auto& username : usernames) {
-    usernames_set.insert(username);
-  }
-
   auto registry_with_wlock = registry_->GetRegistryWithWriteLock();
   auto& registry = registry_with_wlock.registry;
-  // TODO(see what redis is doing here)
+  // Evict open connections for old users
+  EvictOpenConnectionsOnAllProactorsWithRegistry(registry);
   if (!init) {
     registry.clear();
-  }
-  // Evict open connections for users not present in the updated ACL
-  for (const auto& [username, _] : registry) {
-    if (username == "default")
-      continue;
-    if (!usernames_set.contains(username)) {
-      EvictOpenConnectionsOnAllProactors(username);
-    }
   }
   std::vector<uint32_t> categories;
   NestedVector commands;
@@ -278,10 +282,6 @@ std::optional<facade::ErrorReply> AclFamily::LoadToRegistryFromFile(std::string_
   if (!registry.contains("default")) {
     auto& user = registry["default"];
     user.Update(registry_->DefaultUserUpdateRequest());
-  }
-
-  if (!init) {
-    StreamUpdatesToAllProactorConnections(usernames, categories, commands);
   }
 
   return {};
